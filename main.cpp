@@ -63,6 +63,40 @@ void triangle_scanline(int ax, int ay, int bx, int by, int cx, int cy, TGAImage 
     }
 }
 
+bool is_in_triangle(int ax, int ay, int bx, int by, int cx, int cy, int px, int py) {
+    double w1 = 0.0, w2 = 0.0;
+
+    // calculate w1
+    double denom1 = static_cast<double>((by - ay) * (cx - ax) - (bx - ax) * (cy - ay));
+    if (denom1 == 0.0) return false; // degenerate triangle
+    double num1 = static_cast<double>(ax * (cy - ay) + (py - ay) * (cx - ax) - px * (cy - ay));
+    w1 = num1 / denom1;
+
+    // calculate w2
+    double denom2 = static_cast<double>(cy - ay);
+    if (denom2 == 0.0) return false;
+    w2 = (static_cast<double>(py - ay) - w1 * (by - ay)) / denom2;
+
+    if (w1 >= 0.0 && w2 >= 0.0 && w1 + w2 <= 1.0)
+        return true;
+    else
+        return false;
+}
+
+void triangle_bounding_box(int ax, int ay, int bx, int by, int cx, int cy, TGAImage &framebuffer, TGAColor color) {
+    int boxSmallestX = min(min(ax,bx), cx);
+    int boxSmallestY = min(min(ay,by), cy);
+    int boxBiggestX = max(max(ax,bx), cx);
+    int boxBiggestY = max(max(ay,by), cy);
+
+    for (int i = boxSmallestX; i <= boxBiggestX; i++) {
+        for (int j = boxSmallestY; j <= boxBiggestY; j++) {
+            if (is_in_triangle(ax,ay,bx,by,cx,cy,i,j))
+                framebuffer.set(i, j, color);
+        }
+    }
+}
+
 int main(int argc, char** argv) {
     constexpr int width  = 3000;
     constexpr int height = 3000;
@@ -92,7 +126,8 @@ int main(int argc, char** argv) {
         for (int c = 0; c < 3; c++) {
             random[c] = rand() % 255;
         }
-        triangle_scanline(x0, y0, x1, y1, x2, y2, framebuffer, random);
+        //triangle_scanline(x0, y0, x1, y1, x2, y2, framebuffer, random);
+        triangle_bounding_box(x0,y0,x1,y1,x2,y2, framebuffer, random);
     }
 
 
