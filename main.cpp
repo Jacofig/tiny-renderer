@@ -7,8 +7,12 @@ constexpr TGAColor green   = {  0, 255,   0, 255};
 constexpr TGAColor red     = {  0,   0, 255, 255};
 constexpr TGAColor blue    = {255, 128,  64, 255};
 constexpr TGAColor yellow  = {  0, 200, 255, 255};
+constexpr int width  = 3000;
+constexpr int height = 3000;
 
-
+double signed_triangle_area(int ax,int ay,int bx,int by,int cx,int cy) {
+    return 0.5 * ((by-ay)*(bx+ax) + (cy-by)*(cx+bx) + (ay-cy)*(ax+cx));
+}
 
 void line(int ax, int ay, int bx, int by, TGAImage &framebuffer, TGAColor color) {
     bool isTall = abs(ay-by) > abs(ax-bx);
@@ -83,25 +87,38 @@ bool is_in_triangle(int ax, int ay, int bx, int by, int cx, int cy, int px, int 
         return false;
 }
 
-void triangle_bounding_box(int ax, int ay, int bx, int by, int cx, int cy, TGAImage &framebuffer, TGAColor color) {
+void triangle_bounding_box(int ax, int ay, float az, int bx, int by, float bz, int cx, int cy, float cz, TGAImage &framebuffer, TGAColor color, vector<float>& zbuffer) {
     int boxSmallestX = min(min(ax,bx), cx);
     int boxSmallestY = min(min(ay,by), cy);
     int boxBiggestX = max(max(ax,bx), cx);
     int boxBiggestY = max(max(ay,by), cy);
 
+    double total = signed_triangle_area(ax,ay,bx,by,cx,cy);
+    if (total <= 0) return;
+
     for (int i = boxSmallestX; i <= boxBiggestX; i++) {
         for (int j = boxSmallestY; j <= boxBiggestY; j++) {
-            if (is_in_triangle(ax,ay,bx,by,cx,cy,i,j))
-                framebuffer.set(i, j, color);
+            double a = signed_triangle_area(i,j, bx,by, cx,cy) / total;
+            double b = signed_triangle_area(i,j, cx,cy, ax,ay) / total;
+            double g = 1.0 - a - b;
+
+            if (a < 0 || b < 0 || g < 0) continue;
+
+            float z = float(a*az + b*bz + g*cz);
+
+            int id = i + j * width;
+            if (z <= zbuffer[id]) continue;
+
+            zbuffer[id] = z;
+            framebuffer.set(i, j, color);
         }
     }
 }
 
 int main(int argc, char** argv) {
-    constexpr int width  = 3000;
-    constexpr int height = 3000;
     TGAImage framebuffer(width, height, TGAImage::RGB);
     TGAImage framebuffer_rasterization(256, 256, TGAImage::RGB);
+    vector<float> zbuffer(width*height, -numeric_limits<float>::infinity());
 
     Model model("diablo3_pose.obj");
     auto mapToScreenX = [&](float x) { return int((x+1.0f) * 0.5f * width); };
@@ -122,12 +139,17 @@ int main(int argc, char** argv) {
         int y1 = mapToScreenY(v1.y);
         int x2 = mapToScreenX(v2.x);
         int y2 = mapToScreenY(v2.y);
+
+        float z0 = v0.z;
+        float z1 = v1.z;
+        float z2 = v2.z;
+
         TGAColor random;
         for (int c = 0; c < 3; c++) {
             random[c] = rand() % 255;
         }
         //triangle_scanline(x0, y0, x1, y1, x2, y2, framebuffer, random);
-        triangle_bounding_box(x0,y0,x1,y1,x2,y2, framebuffer, random);
+        triangle_bounding_box(x0,y0,z0,x1,y1,z1,x2,y2,z2, framebuffer, random, zbuffer);
     }
 
 
