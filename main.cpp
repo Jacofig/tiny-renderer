@@ -1,6 +1,7 @@
 #include <cmath>
 #include "tgaimage.h"
 #include "model.h"
+#include "geometry.h"
 using namespace std;
 constexpr TGAColor white   = {255, 255, 255, 255}; // attention, BGRA order
 constexpr TGAColor green   = {  0, 255,   0, 255};
@@ -12,6 +13,22 @@ constexpr int height = 3000;
 
 double signed_triangle_area(int ax,int ay,int bx,int by,int cx,int cy) {
     return 0.5 * ((by-ay)*(bx+ax) + (cy-by)*(cx+bx) + (ay-cy)*(ax+cx));
+}
+
+Vec3f rot(Vec3f v) {
+    double a = M_PI / 6.0;
+
+    float x =  v.x * std::cos(a) + v.z * std::sin(a);
+    float y =  v.y;
+    float z = -v.x * std::sin(a) + v.z * std::cos(a);
+
+    return Vec3f(x, y, z);
+}
+
+Vec3f perspective(Vec3f v) {
+    double c = 3.0;
+    float inv = 1.0f / (1.0f - v.z / c);
+    return Vec3f(v.x * inv, v.y * inv, v.z);
 }
 
 void line(int ax, int ay, int bx, int by, TGAImage &framebuffer, TGAColor color) {
@@ -129,10 +146,21 @@ int main(int argc, char** argv) {
         int i1 = face[1];
         int i2 = face[2];
 
-        Vec3f v0 = model.vertices[i0];
-        Vec3f v1 = model.vertices[i1];
-        Vec3f v2 = model.vertices[i2];
+        Vec3f v0 = perspective(rot(model.vertices[i0]));
+        Vec3f v1 = perspective(rot(model.vertices[i1]));
+        Vec3f v2 = perspective(rot(model.vertices[i2]));
 
+        // 1. rotate the scene (camera illusion)
+        v0 = rot(v0);
+        v1 = rot(v1);
+        v2 = rot(v2);
+
+        // 2. perspective projection
+        v0 = perspective(v0);
+        v1 = perspective(v1);
+        v2 = perspective(v2);
+
+        // 3. map to screen
         int x0 = mapToScreenX(v0.x);
         int y0 = mapToScreenY(v0.y);
         int x1 = mapToScreenX(v1.x);
@@ -140,6 +168,7 @@ int main(int argc, char** argv) {
         int x2 = mapToScreenX(v2.x);
         int y2 = mapToScreenY(v2.y);
 
+        // 4. depth stays as z AFTER perspective
         float z0 = v0.z;
         float z1 = v1.z;
         float z2 = v2.z;
