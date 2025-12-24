@@ -19,7 +19,7 @@ Model::Model(const std::string &filename) {
         if (type == "v") {
             float x, y, z;
             ss >> x >> y >> z;
-            vertices.push_back(Vec3f(x, y, z));
+            vertices.push_back(vec3(x, y, z));
         }
         else if (type == "f") {
             std::string a, b, c;
@@ -36,4 +36,15 @@ Model::Model(const std::string &filename) {
             faces.push_back({i0, i1, i2});
         }
     }
+}
+
+int Model::nverts() const { return vertices.size(); }
+int Model::nfaces() const { return faces.size(); }
+
+vec3 Model::vert(const int i) const {
+    return vertices[i];
+}
+
+vec3 Model::vert(const int iface, const int nthvert) const {
+    return vertices[faces[iface][nthvert]];
 }

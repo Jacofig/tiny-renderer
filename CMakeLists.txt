@@ -7,4 +7,7 @@ add_executable(rend main.cpp
         tgaimage.cpp
         tgaimage.h
         model.h
-        model.cpp)
+        model.cpp
+        gl.h
+        gl.cpp
+        config.h)
